@@ -1,9 +1,16 @@
+# Bar Pressure Computational Mechanics.py
+#
+# This script performs a pressure analysis on a bar structure.
+# It uses VTK and Python to visualize the pressure distribution and derive insights.
+#
+# Author: Marouane LAMZITAI
+# Date: 15/07/2023
+
 import vtk
 from vtk.util import numpy_support
 import numpy as np
 from PyQt5 import QtWidgets
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -12,9 +19,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setup_vtk()
 
     def setup_vtk(self):
+        # Create the main window and setup VTK
         self.vtk_widget = QVTKRenderWindowInteractor(self)
         self.setCentralWidget(self.vtk_widget)
 
+        # Set up initial parameters for pressure analysis
         self.power = 500
         self.length = 1.0
         self.num_points = 100
@@ -24,17 +33,22 @@ class MainWindow(QtWidgets.QMainWindow):
         self.max_pressure = self.power / self.length
         self.pressure[self.middle_index] = self.max_pressure
 
+         # Calculate pressure and resistance distribution along the bar
         for i in range(self.middle_index):
             self.pressure[i] = self.max_pressure * (1 - i / self.middle_index)
             self.resistance[i] = self.pressure[i] * self.length / self.power
-
+            
+        
         for i in range(self.middle_index, self.num_points):
             self.pressure[i] = self.max_pressure * (1 - (self.num_points - i) / self.middle_index)
             self.resistance[i] = self.pressure[i] * self.length / self.power
-
+            
+        # Set up VTK objects for visualization
         self.append_filter = vtk.vtkAppendPolyData()
         self.delta_x = self.length / self.num_points
 
+        # Create bar components using VTK geometric objects
+        # (cubes, cylinders) and append them to the append filter
         self.cube_source_wall_left = vtk.vtkCubeSource()
         self.cube_source_wall_left.SetXLength(0.2)
         self.cube_source_wall_left.SetYLength(0.05)
@@ -77,6 +91,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             self.append_filter.AddInputData(self.cylinder_source.GetOutput())
 
+        # Set up VTK pipeline and mapper for visualization
         self.append_filter.Update()
         self.barre_polydata = self.append_filter.GetOutput()
         self.barre_polydata_2 = self.append_filter.GetOutput()
@@ -100,6 +115,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.barre_polydata.GetPointData().SetScalars(self.vtk_pressure)
         self.barre_polydata_2.GetPointData().SetScalars(self.vtk_resistance)
 
+        # Set up actors and mapper for visualization
         self.mapper = vtk.vtkPolyDataMapper()
         self.mapper.SetInputData(self.barre_polydata_2)
         self.mapper.SetScalarModeToUsePointData()
@@ -148,12 +164,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.color_bar.SetWidth(0.1)
         self.color_bar.SetHeight(0.6)
 
+        # Set up renderer and add actors
         self.renderer = vtk.vtkRenderer()
         self.renderer.AddActor(self.barre_actor)
         self.renderer.AddActor(self.wall_actor)
         self.renderer.AddActor(self.wall_actor_right)
         self.renderer.AddActor(self.piece_actor)
         self.renderer.AddActor(self.floor_actor)
+        
         # renderer.AddActor(axes)
         self.renderer.AddActor2D(self.color_bar)
         self.renderer.SetBackground(0.2, 0.3, 0.4)
@@ -161,41 +179,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.vtk_widget.GetRenderWindow().AddRenderer(self.renderer)
         self.vtk_widget.Initialize()
 
-        self.button = QtWidgets.QPushButton('Switch Data', self)
-        self.button.setGeometry(10, 10, 100, 30)
-        self.button.clicked.connect(self.switch_data)
-
         self.show()
-
-        self.switcher = 1
-
-    def switch_data(self):
-        global barre_polydata, barre_polydata_2, mapper, color_bar
-
-        # Swap the input data
-        if self.mapper.GetInputDataObject(0, self.switcher) == self.barre_polydata:
-            self.mapper.SetInputData(self.barre_polydata_2)
-            self.mapper.SetScalarModeToUsePointData()
-            self.mapper.SelectColorArray('Resistance')
-            self.mapper.SetColorModeToMapScalars()
-            self.mapper.SetScalarRange(np.min(self.resistance), np.max(self.resistance))
-            print("yes 1")
-        else :
-            self.mapper.SetInputData(self.barre_polydata)
-            self.mapper.SetScalarModeToUsePointData()
-            self.mapper.SelectColorArray('Pressure')
-            self.mapper.SetColorModeToMapScalars()
-            self.mapper.SetScalarRange(np.min(self.pressure), np.max(self.pressure))
-            print(self.pressure)
-            print("yes 2")
-
-        self.switcher = 1 - self.switcher
-
-        print(self.switcher)
-
-        self.vtk_widget = self.centralWidget()
-        self.vtk_widget.GetRenderWindow().Render()
-
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])
